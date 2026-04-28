@@ -35,16 +35,17 @@ export default function EditAnimalPage() {
         .eq('id', id)
         .single();
 
-      if (error) {
+      if (error || !data) {
         toast.error('Gagal mengambil data');
         return;
       }
 
-      setForm(data);
+      // 🔥 casting supaya TypeScript tidak error
+      setForm(data as unknown as AnimalForm);
     };
 
     fetchData();
-  }, [id, supabase]);
+  }, [id]);
 
   // 🧠 Logic kelayakan qurban
   const checkQurbanEligibility = (form: AnimalForm) => {
@@ -56,7 +57,7 @@ export default function EditAnimalPage() {
   // 📩 Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form) return;
+    if (!form || !id) return;
 
     setLoading(true);
 
@@ -80,8 +81,10 @@ export default function EditAnimalPage() {
 
       toast.success('Update berhasil');
       router.push('/dashboard/seller/animals');
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Terjadi kesalahan';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
