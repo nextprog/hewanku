@@ -1,0 +1,72 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Dashboard Monitoring HewanKita{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <h1 class="text-3xl font-bold mb-6">Dashboard Monitoring HewanKita</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded shadow p-4">
+            <h3 class="text-gray-500 text-sm">Total Pengguna</h3>
+            <p class="text-2xl font-bold">{{ total_users }}</p>
+            <span class="text-xs text-green-600">{{ total_sellers }} Penjual</span>
+        </div>
+        <div class="bg-white rounded shadow p-4">
+            <h3 class="text-gray-500 text-sm">Hewan Tersedia</h3>
+            <p class="text-2xl font-bold">{{ available_animals }} / {{ total_animals }}</p>
+        </div>
+        <div class="bg-white rounded shadow p-4">
+            <h3 class="text-gray-500 text-sm">Pesanan Menunggu</h3>
+            <p class="text-2xl font-bold">{{ pending_payment }} + {{ waiting_verification }}</p>
+        </div>
+        <div class="bg-white rounded shadow p-4">
+            <h3 class="text-gray-500 text-sm">Pendapatan (Paid)</h3>
+            <p class="text-2xl font-bold">Rp {{ revenue|floatformat:0|default:"0" }}</p>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded shadow p-4">
+            <h2 class="text-xl font-semibold mb-3">Trend Pesanan per Bulan</h2>
+            <table class="min-w-full">
+                <thead><tr><th>Bulan</th><th>Jumlah</th><th>Total (Rp)</th></tr></thead>
+                <tbody>
+                {% for m in monthly_orders %}
+                <tr>
+                    <td>{{ m.month|date:"M Y" }}</td>
+                    <td>{{ m.count }}</td>
+                    <td>{{ m.total|default:"0"|floatformat:0 }}</td>
+                </tr>
+                {% empty %}<tr><td colspan="3">Belum ada data</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="bg-white rounded shadow p-4">
+            <h2 class="text-xl font-semibold mb-3">Hewan Paling Laris</h2>
+            <table class="min-w-full">
+                <thead><tr><th>Jenis</th><th>Terjual</th></tr></thead>
+                <tbody>
+                {% for animal in top_animals %}
+                <tr><td>{{ animal.0 }}</td><td>{{ animal.1 }}</td></tr>
+                {% empty %}<tr><td colspan="2">-</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="bg-white rounded shadow p-4 col-span-full">
+            <h2 class="text-xl font-semibold mb-3">Penjual Teraktif</h2>
+            <table class="min-w-full">
+                <thead><tr><th>Nama Penjual</th><th>Hewan Terjual</th></tr></thead>
+                <tbody>
+                {% for seller in top_sellers %}
+                <tr><td>{{ seller.0|default:"Anonim" }}</td><td>{{ seller.1 }}</td></tr>
+                {% empty %}<tr><td colspan="2">-</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
