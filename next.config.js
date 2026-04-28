@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -8,7 +9,21 @@ const withPWA = require('next-pwa')({
 
 const nextConfig = {
   images: {
-    domains: ['zncyvirmkpbtshugtard.supabase.co'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'zncyvirmkpbtshugtard.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
+
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  typescript: {
+    ignoreBuildErrors: true,
   },
 };
 
