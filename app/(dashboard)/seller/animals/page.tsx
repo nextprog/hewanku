@@ -1,52 +1,140 @@
-import { createClient } from '@/lib/supabase/server';
-import Link from 'next/link';
+'use client';
+import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { uploadAnimalImages } from '@/lib/actions/upload';
+import toast from 'react-hot-toast';
 import Image from 'next/image';
 
-
-export default async function SellerAnimalsPage() {
+export default function AddAnimalPage() {
+  const router = useRouter();
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: animals } = await supabase
-    .from('animals')
-    .select('*')
-    .eq('seller_id', user?.id)
-    .order('created_at', { ascending: false });
+  const [loading, setLoading] = useState(false);
+  const [images, setImages] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [form, setForm] = useState({
+    name: '',
+    animal_type: 'Kambing',
+    age_months: 12,
+    price: 0,
+    description: '',
+    location: '',
+  });
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setImages(prev => [...prev, ...files]);
+    const newPreviews = files.map(f => URL.createObjectURL(f));
+    setPreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    URL.revokeObjectURL(previews[index]);
+    setPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Silakan login');
+      setLoading(false);
+      return;
+    }
+
+    // Upload gambar
+    const formData = new FormData();
+    images.forEach(img => formData.append('images', img));
+    let imageUrls: string[] = [];
+    if (images.length > 0) {
+      try {
+        imageUrls = await uploadAnimalImages(formData);
+      } catch (err: any) {
+        toast.error(err.message);
+        setLoading(false);
+        return;
+      }
+    }
+
+    const isEligible = () => {
+      const type = form.animal_type;
+      const age = form.age_months;
+      if (type === 'Kambing' || type === 'Domba') return age >= 12;
+      if (type === 'Sapi' || type === 'Kerbau') return age >= 24;
+      if (type === 'Unta') return age >= 60;
+      return false;
+    };
+
+    const { error } = await supabase.from('animals').insert({
+      seller_id: user.id,
+      name: form.name,
+      animal_type: form.animal_type,
+      age_months: form.age_months,
+      price: form.price,
+      description: form.description,
+      location: form.location,
+      is_qurban_eligible: isEligible(),
+      status: 'available',
+      images: imageUrls,
+    });
+
+    if (error) toast.error(error.message);
+    else {
+      toast.success('Hewan berhasil ditambahkan');
+      router.push('/dashboard/seller/animals');
+    }
+    setLoading(false);
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Hewan Saya</h1>
-        <Link href="/dashboard/seller/animals/add" className="bg-green-600 text-white px-4 py-2 rounded-lg">+ Tambah Hewan</Link>
-      </div>
-      {animals?.length === 0 ? (
-        <p className="text-gray-500">Anda belum menambahkan hewan apapun.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {animals?.map((animal) => (
-            <div key={animal.id} className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="relative h-40">
-                {animal.images?.[0] && <Image src={animal.images[0]} alt={animal.name} fill className="object-cover" />}
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold">{animal.name || animal.animal_type}</h3>
-                <p className="text-green-700 font-bold">Rp {animal.price.toLocaleString('id-ID')}</p>
-                <p className={`text-sm mt-1 ${animal.status === 'available' ? 'text-green-600' : 'text-red-600'}`}>{animal.status === 'available' ? 'Tersedia' : 'Terjual'}</p>
-                <div className="flex gap-2 mt-3">
-                  <Link href={`/dashboard/seller/animals/${animal.id}/edit`} className="flex-1 text-center bg-blue-500 text-white py-1 rounded">Edit</Link>
-                  <button formAction={async () => { 'use server'; await deleteAnimal(animal.id); }} className="flex-1 bg-red-500 text-white py-1 rounded">Hapus</button>
-                </div>
-              </div>
-            </div>
-          ))}
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Tambah Hewan Baru</h1>
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow space-y-4">
+        {/* input text sama seperti sebelumnya */}
+        <div>
+          <label className="block text-sm font-medium">Nama Hewan (opsional)</label>
+          <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full border rounded px-3 py-2" />
         </div>
-      )}
+        <div>
+          <label className="block text-sm font-medium">Jenis Hewan *</label>
+          <select value={form.animal_type} onChange={e => setForm({...form, animal_type: e.target.value})} className="w-full border rounded px-3 py-2">
+            <option>Kambing</option><option>Domba</option><option>Sapi</option><option>Kerbau</option><option>Unta</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Umur (bulan) *</label>
+          <input type="number" value={form.age_months} onChange={e => setForm({...form, age_months: parseInt(e.target.value)})} className="w-full border rounded px-3 py-2" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Harga (Rp) *</label>
+          <input type="number" value={form.price} onChange={e => setForm({...form, price: parseInt(e.target.value)})} className="w-full border rounded px-3 py-2" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Lokasi</label>
+          <input type="text" value={form.location} onChange={e => setForm({...form, location: e.target.value})} className="w-full border rounded px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Deskripsi</label>
+          <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={3} className="w-full border rounded px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Foto Hewan</label>
+          <input type="file" multiple accept="image/*" onChange={handleImageChange} ref={fileInputRef} className="w-full border rounded px-3 py-2" />
+          <div className="flex flex-wrap gap-2 mt-2">
+            {previews.map((src, idx) => (
+              <div key={idx} className="relative w-20 h-20">
+                <Image src={src} alt="preview" fill className="object-cover rounded" />
+                <button type="button" onClick={() => removeImage(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <button type="submit" disabled={loading} className="w-full bg-green-600 text-white py-2 rounded-lg">Simpan</button>
+      </form>
     </div>
   );
-}
-
-async function deleteAnimal(id: string) {
-  'use server';
-  const supabase = createClient();
-  await supabase.from('animals').delete().eq('id', id);
-  revalidatePath('/dashboard/seller/animals');
 }

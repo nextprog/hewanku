@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -26,7 +27,7 @@ export default function EditAnimalPage() {
       }
     };
     fetchAnimal();
-  }, [id]);
+  }, [id, router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
