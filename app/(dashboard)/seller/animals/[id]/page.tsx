@@ -61,7 +61,9 @@ export default function EditAnimalPage() {
     setLoading(true);
 
     try {
-      const isEligible = checkQurbanEligibility(form);
+      const isEligible =
+        (form.animal_type === 'kambing' && form.age_months >= 12) ||
+        (form.animal_type === 'sapi' && form.age_months >= 24);
 
       const { error } = await supabase
         .from('animals')
@@ -81,7 +83,7 @@ export default function EditAnimalPage() {
       toast.success('Update berhasil');
       router.push('/dashboard/seller/animals');
     } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan');
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
